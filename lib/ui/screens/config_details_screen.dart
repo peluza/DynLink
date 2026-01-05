@@ -6,17 +6,31 @@ import '../../models/ddns_config.dart';
 import '../../providers/config_provider.dart';
 import '../../services/ddns_service.dart';
 
-class ConfigDetailsScreen extends StatelessWidget {
+class ConfigDetailsScreen extends StatefulWidget {
   final String configId;
 
   const ConfigDetailsScreen({super.key, required this.configId});
+
+  @override
+  State<ConfigDetailsScreen> createState() => _ConfigDetailsScreenState();
+}
+
+class _ConfigDetailsScreenState extends State<ConfigDetailsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Refresh data from disk when screen opens to catch background updates
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<ConfigProvider>(context, listen: false).loadConfigs();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Consumer<ConfigProvider>(
       builder: (context, provider, child) {
         final configIndex = provider.configs.indexWhere(
-          (c) => c.id == configId,
+          (c) => c.id == widget.configId,
         );
 
         if (configIndex == -1) {
@@ -42,6 +56,7 @@ class ConfigDetailsScreen extends StatelessWidget {
                 // Header Info
                 _buildInfoCard(context, config),
                 const SizedBox(height: 24),
+                // ... (rest of the UI remains the same)
                 Text(
                   'Activity Log',
                   style: GoogleFonts.outfit(
@@ -51,7 +66,6 @@ class ConfigDetailsScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                // Logs List
                 Expanded(
                   child: config.logs.isEmpty
                       ? Center(

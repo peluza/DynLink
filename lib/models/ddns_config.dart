@@ -96,9 +96,18 @@ class DDNSConfig {
           : null,
       lastStatus: json['lastStatus'],
       logs:
-          (json['logs'] as List<dynamic>?)
-              ?.map((e) => LogEntry.fromJson(e))
-              .toList() ??
+          (json['logs'] as List<dynamic>?)?.map((e) {
+            try {
+              return LogEntry.fromJson(e);
+            } catch (e) {
+              print("DEBUG: Error parsing log entry: $e");
+              return LogEntry(
+                time: DateTime.now(),
+                status: 'Error',
+                message: 'Corrupted log',
+              );
+            }
+          }).toList() ??
           [],
     );
   }

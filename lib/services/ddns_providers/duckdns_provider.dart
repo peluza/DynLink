@@ -20,7 +20,7 @@ class DuckDNSProvider implements DDNSProvider {
           .replaceAll('Token=', '');
 
       final url =
-          'https://www.duckdns.org/update?domains=$cleanDomain&token=${cleanToken.substring(0, 4)}...';
+          'https://duckdns.org/update?domains=$cleanDomain&token=${cleanToken.substring(0, 4)}...';
       print('Attempting update: $url');
 
       final params = {'domains': cleanDomain, 'token': cleanToken};
@@ -29,7 +29,7 @@ class DuckDNSProvider implements DDNSProvider {
       // if (ip.isNotEmpty) params['ip'] = ip;
 
       final response = await _dio.get(
-        'https://www.duckdns.org/update',
+        'https://duckdns.org/update',
         queryParameters: params,
       );
 

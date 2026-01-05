@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:ddns_updater/services/ddns_service.dart';
 import 'package:ddns_updater/providers/config_provider.dart';
@@ -7,6 +8,9 @@ const String simplePeriodicTask = "simplePeriodicTask";
 @pragma('vm:entry-point')
 void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
+    // CRITICAL: Initialize Flutter bindings for SharedPreferences to work in background!
+    WidgetsFlutterBinding.ensureInitialized();
+
     print("Native called background task: $task");
     try {
       // 1. Get all saved configs
@@ -81,7 +85,7 @@ class BackgroundService {
       frequency: const Duration(minutes: 15),
       constraints: Constraints(networkType: NetworkType.connected),
       existingWorkPolicy:
-          ExistingPeriodicWorkPolicy.keep, // Don't replace if exists
+          ExistingPeriodicWorkPolicy.update, // Update policy to ensure it runs
     );
   }
 }

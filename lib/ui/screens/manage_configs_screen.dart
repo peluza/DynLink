@@ -21,6 +21,24 @@ class _ManageConfigsScreenState extends State<ManageConfigsScreen> {
     });
   }
 
+  String _getSimpleStatus(config) {
+    if (config.lastStatus == null) return 'Status: Waiting...';
+
+    final isSuccess = config.lastStatus.startsWith('Success');
+    final statusLabel = isSuccess ? '✓ Success' : '✗ Error';
+
+    // Format date if available
+    if (config.lastUpdate != null) {
+      final date = config.lastUpdate;
+      final timeStr =
+          '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+      final dateStr = '${date.day}/${date.month}';
+      return '$statusLabel • $dateStr $timeStr';
+    }
+
+    return statusLabel;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -74,7 +92,7 @@ class _ManageConfigsScreenState extends State<ManageConfigsScreen> {
                         style: const TextStyle(color: Colors.white70),
                       ),
                       Text(
-                        'Last Status: ${config.lastStatus ?? "Waiting..."}',
+                        _getSimpleStatus(config),
                         style: TextStyle(
                           color:
                               (config.lastStatus?.startsWith('Success') ??

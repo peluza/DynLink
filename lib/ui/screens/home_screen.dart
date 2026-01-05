@@ -36,15 +36,33 @@ class HomeScreen extends StatelessWidget {
       listen: false,
     ).addConfig(newConfig);
 
-    // Register background task just in case it wasn't running
+    // Register background task
     await BackgroundService.registerPeriodicTask();
+
+    // Trigger IMMEDIATE update for feedback
+    final ddnsService = Provider.of<DDNSService>(context, listen: false);
+    final configProvider = Provider.of<ConfigProvider>(context, listen: false);
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Testing connection...')));
+
+    await ddnsService.performUpdate(newConfig.domain, newConfig.token);
+
+    final result = ddnsService.lastStatus;
+    await configProvider.logUpdate(newConfig.id, result, DateTime.now());
 
     homeProvider.clearForm();
 
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Configuration Saved & Background Service Active'),
+        SnackBar(
+          content: Text(
+            'Saved. Initial Update: ${result.startsWith("Success") ? "Successful" : "Failed"}',
+          ),
+          backgroundColor: result.startsWith("Success")
+              ? Colors.green
+              : Colors.redAccent,
         ),
       );
     }
