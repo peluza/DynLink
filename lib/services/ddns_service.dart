@@ -1,6 +1,16 @@
 import 'package:flutter/foundation.dart';
+import '../models/ddns_config.dart';
 import 'ddns_providers/ddns_provider.dart';
 import 'ddns_providers/duckdns_provider.dart';
+import 'ip_service.dart';
+
+class DDNSUpdateResult {
+  final String status;
+  final String? publicIp;
+  final bool success;
+
+  DDNSUpdateResult({required this.status, this.publicIp, this.success = false});
+}
 
 class DDNSService extends ChangeNotifier {
   // Strategy: Default to DuckDNS for now
@@ -18,18 +28,16 @@ class DDNSService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Triggers an immediate update.
-  Future<void> performUpdate(String domain, String token) async {
-    _lastStatus = 'Updating...';
+  Future<void> performUpdate(DDNSConfig config) async {
+    _lastStatus = 'Checking IP...';
     notifyListeners();
 
     try {
-      final result = await _provider.updateIP(domain, token);
-
-      // Also fetch current public IP for verification
-      _currentIP = await _provider.getExternalIP();
-
-      _lastStatus = result;
+      final result = await _smartUpdateLogic(config, _provider);
+      _lastStatus = result.status;
+      if (result.publicIp != null) {
+        _currentIP = result.publicIp;
+      }
     } catch (e) {
       _lastStatus = 'Error: $e';
     } finally {
@@ -37,11 +45,54 @@ class DDNSService extends ChangeNotifier {
     }
   }
 
-  // Static method for background execution where we don't have the Provider context
-  static Future<String> backgroundUpdate(String domain, String token) async {
-    // In background, we currently assume DuckDNS or load pref
-    // For MVP we default to DuckDNSProvider
+  // Static method for background execution
+  static Future<DDNSUpdateResult> backgroundUpdate(DDNSConfig config) async {
     final provider = DuckDNSProvider();
-    return await provider.updateIP(domain, token);
+    return await _smartUpdateLogic(config, provider);
+  }
+
+  /// Core logic for smart updates
+  static Future<DDNSUpdateResult> _smartUpdateLogic(
+    DDNSConfig config,
+    DDNSProvider provider,
+  ) async {
+    final ipService = IpService();
+
+    // 1. Get Public IP
+    final publicIp = await ipService.getPublicIp();
+
+    // 2. Resolve Domain IP
+    final domainIp = await ipService.resolveDomainIp(config.domain);
+
+    // 3. Check 15-day rule
+    final daysSinceLastSuccess = config.lastSuccessUpdate != null
+        ? DateTime.now().difference(config.lastSuccessUpdate!).inDays
+        : 999;
+
+    bool forceUpdate = daysSinceLastSuccess >= 15;
+
+    // 4. Compare
+    if (publicIp == domainIp && !forceUpdate) {
+      return DDNSUpdateResult(
+        status: "Skipped: IP matches domain. No update needed.",
+        publicIp: publicIp,
+        success: true,
+      );
+    }
+
+    String statusMsg = "";
+    if (forceUpdate && publicIp == domainIp) {
+      statusMsg = "(Forced 15-day) ";
+    }
+
+    // Perform Update
+    final result = await provider.updateIP(config.domain, config.token);
+
+    final fromIp = domainIp ?? "unknown";
+    return DDNSUpdateResult(
+      status: "$statusMsg$result (Changed from $fromIp to $publicIp)",
+      publicIp: publicIp,
+      success: true,
+    );
   }
 }

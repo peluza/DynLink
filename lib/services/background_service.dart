@@ -41,15 +41,32 @@ void callbackDispatcher() {
         try {
           // TODO: Use provider factory when we have more providers
           // For now assuming DuckDNS based on config.provider or default
-          final result = await DDNSService.backgroundUpdate(
-            config.domain,
-            config.token,
-          );
+          final result = await DDNSService.backgroundUpdate(config);
 
           await ConfigProvider.updateStatusStatic(
             config.id,
-            "Success: $result",
+            result.status,
             DateTime.now(),
+            lastKnownIp: result.publicIp,
+            // Only update lastSuccessUpdate if we strictly updated or verified successful state
+            // Logic: if result.success is true, we consider it a success.
+            // But strict 15-day rule depends on "actual update".
+            // If we skipped, we update 'lastUpdate' (last check), but do we update 'lastSuccessUpdate'?
+            // The user said: "almacenar la fecha de del cambio de ip".
+            // So lastSuccessUpdate should probably only be updated when IP *actually changes* or forced.
+            // But we also need to know when we *checked* for the skip logic.
+            // `DDNSConfig` has `lastUpdate` and `lastSuccessUpdate`.
+            // `lastUpdate` = last time we ran the check.
+            // `lastSuccessUpdate` = last time we performed a successful sync with provider?
+            // "al dia 15 de no actualizar la ip debes hacerlo" -> implies lastSuccessUpdate tracks the actual change.
+            // So if we SKIP, we DO NOT update lastSuccessUpdate.
+            // We only update lastSuccessUpdate if result.status contains "Success" (from provider) AND it wasn't a skip.
+            // In my DDNSService, skip returns success=true.
+            // Let's rely on status string content or refine DDNSUpdateResult?
+            // "Skipped" is in the status.
+            lastSuccessUpdate: result.status.contains('Skipped')
+                ? null
+                : DateTime.now(),
           );
           successCount++;
         } catch (e) {

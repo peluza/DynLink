@@ -32,6 +32,9 @@ class DDNSConfig {
   final DateTime? lastUpdate;
   final String? lastStatus;
   final List<LogEntry> logs;
+  final String? lastKnownIp; // The last IP we successfully updated/verified
+  final DateTime?
+  lastSuccessUpdate; // The last time we actually sent an update to the provider
 
   DDNSConfig({
     required this.id,
@@ -43,6 +46,8 @@ class DDNSConfig {
     this.lastUpdate,
     this.lastStatus,
     this.logs = const [],
+    this.lastKnownIp,
+    this.lastSuccessUpdate,
   });
 
   DDNSConfig copyWith({
@@ -55,6 +60,8 @@ class DDNSConfig {
     DateTime? lastUpdate,
     String? lastStatus,
     List<LogEntry>? logs,
+    String? lastKnownIp,
+    DateTime? lastSuccessUpdate,
   }) {
     return DDNSConfig(
       id: id ?? this.id,
@@ -66,6 +73,8 @@ class DDNSConfig {
       lastUpdate: lastUpdate ?? this.lastUpdate,
       lastStatus: lastStatus ?? this.lastStatus,
       logs: logs ?? this.logs,
+      lastKnownIp: lastKnownIp ?? this.lastKnownIp,
+      lastSuccessUpdate: lastSuccessUpdate ?? this.lastSuccessUpdate,
     );
   }
 
@@ -80,6 +89,8 @@ class DDNSConfig {
       'lastUpdate': lastUpdate?.toIso8601String(),
       'lastStatus': lastStatus,
       'logs': logs.map((l) => l.toJson()).toList(),
+      'lastKnownIp': lastKnownIp,
+      'lastSuccessUpdate': lastSuccessUpdate?.toIso8601String(),
     };
   }
 
@@ -109,6 +120,10 @@ class DDNSConfig {
             }
           }).toList() ??
           [],
+      lastKnownIp: json['lastKnownIp'],
+      lastSuccessUpdate: json['lastSuccessUpdate'] != null
+          ? DateTime.parse(json['lastSuccessUpdate'])
+          : null,
     );
   }
 }

@@ -79,8 +79,10 @@ class ConfigProvider extends ChangeNotifier {
   static Future<void> updateStatusStatic(
     String id,
     String status,
-    DateTime time,
-  ) async {
+    DateTime time, {
+    String? lastKnownIp,
+    DateTime? lastSuccessUpdate,
+  }) async {
     print("DEBUG: updateStatusStatic start for $id");
     final prefs = await SharedPreferences.getInstance();
     await prefs.reload(); // Ensure we are appending to the LATEST logs
@@ -98,7 +100,9 @@ class ConfigProvider extends ChangeNotifier {
         // Create new log entry
         final newLog = LogEntry(
           time: time,
-          status: status.contains('Success') ? 'Success' : 'Error',
+          status: status.contains('Success')
+              ? 'Success'
+              : (status.contains('Skipped') ? 'Skipped' : 'Error'),
           message: status,
         );
 
@@ -114,6 +118,8 @@ class ConfigProvider extends ChangeNotifier {
           lastStatus: status,
           lastUpdate: time,
           logs: currentLogs,
+          lastKnownIp: lastKnownIp, // Update if provided
+          lastSuccessUpdate: lastSuccessUpdate, // Update if provided
         );
 
         print("DEBUG: New logs count: ${currentLogs.length}. Saving...");
@@ -135,8 +141,20 @@ class ConfigProvider extends ChangeNotifier {
   }
 
   // Instance method for foreground updates (e.g. "Test Now" button)
-  Future<void> logUpdate(String id, String status, DateTime time) async {
-    await updateStatusStatic(id, status, time);
+  Future<void> logUpdate(
+    String id,
+    String status,
+    DateTime time, {
+    String? lastKnownIp,
+    DateTime? lastSuccessUpdate,
+  }) async {
+    await updateStatusStatic(
+      id,
+      status,
+      time,
+      lastKnownIp: lastKnownIp,
+      lastSuccessUpdate: lastSuccessUpdate,
+    );
     await loadConfigs(); // Reload to refresh UI
   }
 }
