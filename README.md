@@ -4,11 +4,14 @@ A robust Flutter application for managing Dynamic DNS (DDNS) updates, specifical
 
 ## Features
 
+*   **Smart Update Logic**: Checks if your public IP matches the domain's current IP before updating. Skips unnecessary requests to prevent bans, but enforces a mandatory update every 15 days to keep the hostname active.
+*   **Failover IP Detection**: Uses multiple IP verification services (`icanhazip.com`, `aws`) and rotates them every 15 minutes to guarantee reliability.
+*   **Background Persistence**: Configured to auto-start on device boot (`RECEIVE_BOOT_COMPLETED`) and ignore battery optimizations, ensuring the app behaves like a system service.
 *   **Multi-Account Support**: Manage multiple DDNS configurations in one place.
 *   **DuckDNS Integration**: Seamlessly sets up subdomains with DuckDNS.
 *   **Background Updates**: Uses `workmanager` to perform reliable periodic updates updates in the background, even when the app is closed.
-*   **Configurable Intervals**: Choose how often each account updates (15m, 30m, 1h, 12h, 24h) to avoid rate limits.
-*   **Log History**: View a detailed activity log for each account (last 50 entries) to track successful syncs and errors.
+*   **Configurable Intervals**: Choose how often each account updates (15m, 30m, 1h, 12h, 24h).
+*   **Log History**: View a detailed activity log for each account, distinguishing between "Success" (IP Changed) and "Skipped" (IP Synced).
 *   **Dark Theme UI**: A sleek, modern "Cyber/Dark" aesthetic built with Google Fonts (Outfit).
 *   **Android TV Compatible**: Designed to work well on both phones and TV boxes.
 
@@ -40,10 +43,13 @@ This project follows a **Clean Architecture** inspired structure with a **Provid
 
 ## Usage
 
-1.  **Add Account**: On the home screen, select "DuckDNS", enter your Subdomain and Token, and choose an Update Frequency.
-2.  **Manage Accounts**: Click the list icon in the top right to view all configured accounts.
-3.  **View Logs**: Tap on any account in the list to see its details and a history of the last 50 update attempts.
-4.  **Manual Update**: Inside the details screen, click the cyan refresh button to trigger an immediate update and log the result.
+1.  **Grant Permissions**: On first launch, click the **Battery Icon** in the top-right corner to request exemption from battery optimizations. This is critical for background reliability.
+    *   **Orange Icon**: Optimization is enabled (Bad for background tasks). Click to fix.
+    *   **Green Icon**: Optimization is disabled (Good). The app can run freely.
+2.  **Add Account**: On the home screen, select "DuckDNS", enter your Subdomain and Token, and choose an Update Frequency.
+3.  **Manage Accounts**: Click the list icon in the top right to view all configured accounts.
+4.  **View Logs**: Tap on any account in the list to see its details and a history of the last 50 update attempts.
+5.  **Manual Update**: Inside the details screen, click the cyan refresh button to trigger an immediate update and log the result.
 
 ## Dependencies
 
