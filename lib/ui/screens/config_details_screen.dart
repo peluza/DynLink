@@ -78,7 +78,10 @@ class _ConfigDetailsScreenState extends State<ConfigDetailsScreen> {
                           itemCount: config.logs.length,
                           itemBuilder: (context, index) {
                             final log = config.logs[index];
-                            final isSuccess = log.status == 'Success';
+                            final isSuccess = log.status.startsWith('Success');
+                            final isSkipped = log.status.startsWith('Skipped');
+                            final isGood = isSuccess || isSkipped;
+
                             return Container(
                               margin: const EdgeInsets.only(bottom: 8),
                               padding: const EdgeInsets.all(12),
@@ -87,8 +90,10 @@ class _ConfigDetailsScreenState extends State<ConfigDetailsScreen> {
                                 borderRadius: BorderRadius.circular(8),
                                 border: Border(
                                   left: BorderSide(
-                                    color: isSuccess
-                                        ? Colors.greenAccent
+                                    color: isGood
+                                        ? (isSkipped
+                                              ? Colors.tealAccent
+                                              : Colors.greenAccent)
                                         : Colors.redAccent,
                                     width: 4,
                                   ),
@@ -104,8 +109,10 @@ class _ConfigDetailsScreenState extends State<ConfigDetailsScreen> {
                                       Text(
                                         log.status,
                                         style: GoogleFonts.outfit(
-                                          color: isSuccess
-                                              ? Colors.greenAccent
+                                          color: isGood
+                                              ? (isSkipped
+                                                    ? Colors.tealAccent
+                                                    : Colors.greenAccent)
                                               : Colors.redAccent,
                                           fontWeight: FontWeight.bold,
                                         ),
@@ -154,11 +161,16 @@ class _ConfigDetailsScreenState extends State<ConfigDetailsScreen> {
                 context,
               ).showSnackBar(const SnackBar(content: Text('Updating...')));
 
-              await ddnsService.performUpdate(config.domain, config.token);
+              await ddnsService.performUpdate(config);
 
               final result = ddnsService.lastStatus;
 
-              await configProvider.logUpdate(config.id, result, DateTime.now());
+              await configProvider.logUpdate(
+                config.id,
+                result,
+                DateTime.now(),
+                lastKnownIp: ddnsService.currentIP,
+              );
             },
             child: const Icon(Icons.refresh, color: Colors.black),
           ),

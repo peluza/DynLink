@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uuid/uuid.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../services/ddns_service.dart';
 import '../../services/background_service.dart';
 import '../../providers/config_provider.dart';
@@ -9,8 +10,47 @@ import '../../providers/home_provider.dart';
 import '../../models/ddns_config.dart';
 import 'manage_configs_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
+  bool _isBatteryOptimized =
+      true; // Default to assuming worst case (optimized = restricted)
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _checkBatteryStatus();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkBatteryStatus();
+    }
+  }
+
+  Future<void> _checkBatteryStatus() async {
+    final status = await Permission.ignoreBatteryOptimizations.status;
+    if (mounted) {
+      setState(() {
+        // If granted, it means we are NOT optimized (good).
+        // If denied, it means we ARE optimized (bad).
+        _isBatteryOptimized = !status.isGranted;
+      });
+    }
+  }
 
   Future<void> _saveConfig(BuildContext context) async {
     final homeProvider = Provider.of<HomeProvider>(context, listen: false);
@@ -47,10 +87,16 @@ class HomeScreen extends StatelessWidget {
       context,
     ).showSnackBar(const SnackBar(content: Text('Testing connection...')));
 
-    await ddnsService.performUpdate(newConfig.domain, newConfig.token);
+    await ddnsService.performUpdate(newConfig);
 
     final result = ddnsService.lastStatus;
-    await configProvider.logUpdate(newConfig.id, result, DateTime.now());
+    // We pass the currentIP from service if available
+    await configProvider.logUpdate(
+      newConfig.id,
+      result,
+      DateTime.now(),
+      lastKnownIp: ddnsService.currentIP,
+    );
 
     homeProvider.clearForm();
 
@@ -58,9 +104,10 @@ class HomeScreen extends StatelessWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Saved. Initial Update: ${result.startsWith("Success") ? "Successful" : "Failed"}',
+            'Saved. Initial Update: ${result.startsWith("Success") ? "Successful" : (result.contains("Skipped") ? "Skipped (IP Synced)" : "Failed")}',
           ),
-          backgroundColor: result.startsWith("Success")
+          backgroundColor:
+              (result.startsWith("Success") || result.contains("Skipped"))
               ? Colors.green
               : Colors.redAccent,
         ),
@@ -80,6 +127,28 @@ class HomeScreen extends StatelessWidget {
         title: Text('DDNS Updater', style: GoogleFonts.outfit()),
         backgroundColor: Colors.transparent,
         actions: [
+          IconButton(
+            icon: Icon(
+              _isBatteryOptimized ? Icons.battery_alert : Icons.battery_full,
+              color: _isBatteryOptimized
+                  ? Colors.orangeAccent
+                  : Colors.greenAccent,
+            ),
+            tooltip: _isBatteryOptimized
+                ? 'Optimize for Background'
+                : 'Background Active',
+            onPressed: () async {
+              if (_isBatteryOptimized) {
+                await _requestBatteryExemption(context);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("App is allowed to run in background"),
+                  ),
+                );
+              }
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.list_alt, color: Colors.white),
             tooltip: 'Manage Accounts',
@@ -238,10 +307,14 @@ class HomeScreen extends StatelessWidget {
                               context,
                               listen: false,
                             );
-                            await ddnsService.performUpdate(
-                              homeProv.fullDomain,
-                              homeProv.tokenController.text.trim(),
+                            // We construct a temporary config for the test
+                            final tempConfig = DDNSConfig(
+                              id: 'temp',
+                              provider: homeProv.selectedProvider,
+                              domain: homeProv.fullDomain,
+                              token: homeProv.tokenController.text.trim(),
                             );
+                            await ddnsService.performUpdate(tempConfig);
                           },
                           style: _buttonStyle(colorScheme.primary),
                           child: const Text('TEST NOW'),
@@ -262,6 +335,56 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Future<void> _requestBatteryExemption(BuildContext context) async {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF2C2C2C),
+        title: const Text(
+          "Background Persistence",
+          style: TextStyle(color: Colors.white),
+        ),
+        content: const Text(
+          "To ensure the app updates your IP reliably in the background, please allow it to ignore battery optimizations.\n\n"
+          "1. Click 'OPEN SETTINGS'\n"
+          "2. Select 'All apps'\n"
+          "3. Find 'DDNS Updater'\n"
+          "4. Select 'Don't optimize'",
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("CANCEL"),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                // Request permission directly
+                // On Android, this usually opens a system dialog to "Allow" or "Deny"
+                var status = await Permission.ignoreBatteryOptimizations
+                    .request();
+
+                // If denied or restricted, fall back to general settings
+                if (!status.isGranted) {
+                  await openAppSettings();
+                }
+
+                // Re-check status when coming back
+                await _checkBatteryStatus();
+              } catch (e) {
+                print("Error requesting permission: $e");
+                await openAppSettings();
+              }
+            },
+            child: const Text("OPEN SETTINGS"),
+          ),
+        ],
       ),
     );
   }

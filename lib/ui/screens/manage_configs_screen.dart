@@ -25,7 +25,13 @@ class _ManageConfigsScreenState extends State<ManageConfigsScreen> {
     if (config.lastStatus == null) return 'Status: Waiting...';
 
     final isSuccess = config.lastStatus.startsWith('Success');
-    final statusLabel = isSuccess ? '✓ Success' : '✗ Error';
+    final isSkipped = config.lastStatus.startsWith('Skipped');
+
+    String statusLabel = '✗ Error';
+    if (isSuccess) statusLabel = '✓ Success';
+    if (isSkipped)
+      statusLabel =
+          '✓ Synced'; // User requested "Skipped" is not bad. "Synced" sounds professional.
 
     // Format date if available
     if (config.lastUpdate != null) {
@@ -64,6 +70,11 @@ class _ManageConfigsScreenState extends State<ManageConfigsScreen> {
             itemCount: manager.configs.length,
             itemBuilder: (context, index) {
               final config = manager.configs[index];
+              final isSuccess =
+                  config.lastStatus?.startsWith('Success') ?? false;
+              final isSkipped =
+                  config.lastStatus?.startsWith('Skipped') ?? false;
+
               return Card(
                 color: const Color(0xFF1E1E1E),
                 margin: const EdgeInsets.only(bottom: 16),
@@ -94,10 +105,10 @@ class _ManageConfigsScreenState extends State<ManageConfigsScreen> {
                       Text(
                         _getSimpleStatus(config),
                         style: TextStyle(
-                          color:
-                              (config.lastStatus?.startsWith('Success') ??
-                                  false)
-                              ? Colors.greenAccent
+                          color: (isSuccess || isSkipped)
+                              ? (isSkipped
+                                    ? Colors.tealAccent
+                                    : Colors.greenAccent)
                               : Colors.redAccent,
                           fontSize: 12,
                         ),
