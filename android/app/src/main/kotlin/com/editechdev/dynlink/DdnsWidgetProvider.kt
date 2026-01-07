@@ -1,4 +1,4 @@
-package com.example.ddns_updater
+package com.editechdev.dynlink
 
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
