@@ -1,8 +1,9 @@
 import 'package:flutter/foundation.dart';
+import 'package:ddns_updater/services/ip_service.dart';
+import 'package:ddns_updater/services/widget_service.dart';
 import '../models/ddns_config.dart';
 import 'ddns_providers/ddns_provider.dart';
 import 'ddns_providers/duckdns_provider.dart';
-import 'ip_service.dart';
 
 class DDNSUpdateResult {
   final String status;
@@ -32,8 +33,9 @@ class DDNSService extends ChangeNotifier {
     _lastStatus = 'Checking IP...';
     notifyListeners();
 
+    DDNSUpdateResult? result;
     try {
-      final result = await _smartUpdateLogic(config, _provider);
+      result = await _smartUpdateLogic(config, _provider);
       _lastStatus = result.status;
       if (result.publicIp != null) {
         _currentIP = result.publicIp;
@@ -41,6 +43,17 @@ class DDNSService extends ChangeNotifier {
     } catch (e) {
       _lastStatus = 'Error: $e';
     } finally {
+      // Update widget with new status
+      await WidgetService.updateWidget(
+        ip:
+            _currentIP ??
+            config
+                .lastKnownIp, // Use current IP if available, otherwise last known
+        domain: config.domain,
+        status:
+            result?.status ??
+            _lastStatus, // Use result status if available, otherwise lastStatus
+      );
       notifyListeners();
     }
   }
@@ -48,7 +61,29 @@ class DDNSService extends ChangeNotifier {
   // Static method for background execution
   static Future<DDNSUpdateResult> backgroundUpdate(DDNSConfig config) async {
     final provider = DuckDNSProvider();
-    return await _smartUpdateLogic(config, provider);
+    try {
+      final result = await _smartUpdateLogic(config, provider);
+      // Update widget with new status
+      await WidgetService.updateWidget(
+        ip: result.publicIp ?? config.lastKnownIp,
+        domain: config.domain,
+        status: result.status,
+      );
+      return result;
+    } catch (e) {
+      final errorStatus = 'Error: $e';
+      // Update widget with error
+      await WidgetService.updateWidget(
+        ip: config.lastKnownIp, // Keep old IP if available
+        domain: config.domain,
+        status: 'Error',
+      );
+      return DDNSUpdateResult(
+        status: errorStatus,
+        publicIp: null,
+        success: false,
+      );
+    }
   }
 
   /// Core logic for smart updates
