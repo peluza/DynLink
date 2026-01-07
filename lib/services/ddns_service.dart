@@ -115,6 +115,30 @@ class DDNSService extends ChangeNotifier {
       );
     }
 
+    // VERIFICATION STEP:
+    // If we are about to update because the IP is different, verify stability.
+    if (publicIp != domainIp) {
+      await Future.delayed(const Duration(seconds: 5));
+      try {
+        final verifiedIp = await ipService.getPublicIp();
+        if (verifiedIp != publicIp) {
+          return DDNSUpdateResult(
+            status:
+                "Skipped: Unstable network. IP changed from $publicIp to $verifiedIp.",
+            publicIp: verifiedIp,
+            success: false,
+          );
+        }
+      } catch (e) {
+        // If verification fails, it's also unstable
+        return DDNSUpdateResult(
+          status: "Skipped: Network error during verification: $e",
+          publicIp: publicIp,
+          success: false,
+        );
+      }
+    }
+
     String statusMsg = "";
     if (forceUpdate && publicIp == domainIp) {
       statusMsg = "(Forced 15-day) ";
