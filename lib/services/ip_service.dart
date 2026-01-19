@@ -2,7 +2,9 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 
 class IpService {
-  final Dio _dio = Dio();
+  final Dio _dio;
+
+  IpService({Dio? dio}) : _dio = dio ?? Dio();
 
   // Failover strategy:
   // 0-15 min: Use icanhazip

@@ -29,13 +29,13 @@ class DDNSService extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> performUpdate(DDNSConfig config) async {
+  Future<void> performUpdate(DDNSConfig config, {IpService? ipService}) async {
     _lastStatus = 'Checking IP...';
     notifyListeners();
 
     DDNSUpdateResult? result;
     try {
-      result = await _smartUpdateLogic(config, _provider);
+      result = await _smartUpdateLogic(config, _provider, ipService: ipService);
       _lastStatus = result.status;
       if (result.publicIp != null) {
         _currentIP = result.publicIp;
@@ -59,10 +59,18 @@ class DDNSService extends ChangeNotifier {
   }
 
   // Static method for background execution
-  static Future<DDNSUpdateResult> backgroundUpdate(DDNSConfig config) async {
-    final provider = DuckDNSProvider();
+  static Future<DDNSUpdateResult> backgroundUpdate(
+    DDNSConfig config, {
+    IpService? ipService,
+    DDNSProvider? provider,
+  }) async {
+    final ddnsProvider = provider ?? DuckDNSProvider();
     try {
-      final result = await _smartUpdateLogic(config, provider);
+      final result = await _smartUpdateLogic(
+        config,
+        ddnsProvider,
+        ipService: ipService,
+      );
       // Update widget with new status
       await WidgetService.updateWidget(
         ip: result.publicIp ?? config.lastKnownIp,
@@ -89,15 +97,16 @@ class DDNSService extends ChangeNotifier {
   /// Core logic for smart updates
   static Future<DDNSUpdateResult> _smartUpdateLogic(
     DDNSConfig config,
-    DDNSProvider provider,
-  ) async {
-    final ipService = IpService();
+    DDNSProvider provider, {
+    IpService? ipService,
+  }) async {
+    final service = ipService ?? IpService();
 
     // 1. Get Public IP
-    final publicIp = await ipService.getPublicIp();
+    final publicIp = await service.getPublicIp();
 
     // 2. Resolve Domain IP
-    final domainIp = await ipService.resolveDomainIp(config.domain);
+    final domainIp = await service.resolveDomainIp(config.domain);
 
     // 3. Check 15-day rule
     final daysSinceLastSuccess = config.lastSuccessUpdate != null
@@ -120,7 +129,7 @@ class DDNSService extends ChangeNotifier {
     if (publicIp != domainIp) {
       await Future.delayed(const Duration(seconds: 5));
       try {
-        final verifiedIp = await ipService.getPublicIp();
+        final verifiedIp = await service.getPublicIp();
         if (verifiedIp != publicIp) {
           return DDNSUpdateResult(
             status:
