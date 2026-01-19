@@ -1,6 +1,12 @@
 # DDNS Updater
 
-A robust Flutter application for managing Dynamic DNS (DDNS) updates, specifically designed to run reliably on Android devices (including Android TV). It allows you to keep your home IP address synced with your DDNS provider (currently supporting **DuckDNS**).
+![Open Source](https://img.shields.io/badge/Open%20Source-Yes-brightgreen)
+![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
+![Test Status](https://img.shields.io/badge/tests-passing-brightgreen)
+
+A robust, open-source Flutter application for managing Dynamic DNS (DDNS) updates, specifically designed to run reliably on Android devices (including Android TV). It allows you to keep your home IP address synced with your DDNS provider (currently supporting **DuckDNS**).
+
+**Repository**: [https://github.com/peluza/DynLink](https://github.com/peluza/DynLink)
 
 ## Features
 
@@ -9,7 +15,7 @@ A robust Flutter application for managing Dynamic DNS (DDNS) updates, specifical
 *   **Background Persistence**: Configured to auto-start on device boot (`RECEIVE_BOOT_COMPLETED`) and ignore battery optimizations, ensuring the app behaves like a system service.
 *   **Multi-Account Support**: Manage multiple DDNS configurations in one place.
 *   **DuckDNS Integration**: Seamlessly sets up subdomains with DuckDNS.
-*   **Background Updates**: Uses `workmanager` to perform reliable periodic updates updates in the background, even when the app is closed.
+*   **Background Updates**: Uses `workmanager` to perform reliable periodic updates in the background, even when the app is closed.
 *   **Configurable Intervals**: Choose how often each account updates (15m, 30m, 1h, 12h, 24h).
 *   **Log History**: View a detailed activity log for each account, distinguishing between "Success" (IP Changed) and "Skipped" (IP Synced).
 *   **Dark Theme UI**: A sleek, modern "Cyber/Dark" aesthetic built with Google Fonts (Outfit).
@@ -30,7 +36,7 @@ This project follows a **Clean Architecture** inspired structure with a **Provid
 
 1.  **Clone the repository**:
     ```bash
-    git clone <repository-url>
+    git clone https://github.com/peluza/DynLink.git
     ```
 2.  **Install dependencies**:
     ```bash
@@ -40,6 +46,20 @@ This project follows a **Clean Architecture** inspired structure with a **Provid
     ```bash
     flutter run
     ```
+
+## Development
+
+### Running Tests
+This project includes unit tests for core services and providers. To run them:
+
+```bash
+flutter test
+```
+
+The tests cover:
+- **IP Service**: Failover logic and public IP detection.
+- **DDNS Service**: Smart update logic, 15-day rules, and stability verification.
+- **Config Provider**: Local storage persistence and CRUD operations.
 
 ## Usage
 
